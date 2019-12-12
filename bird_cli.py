@@ -54,65 +54,37 @@ class BirdCLI(object):
             pos = self.buf.find(char)
         return pos
 
-    def parse_message(self):
-        """Parse a message from the Bird CLI.  Each message is associated to a
-        code, and may span multiple lines.
+    def parse_reply(self):
+        """Parse a complete reply from the Bird CLI.  A reply may consist of
+        several messages, each with an associated code, until a final message.
 
-        Returns a (code, message, final) tuple where [code] and [message]
-        are represented as bytearrays.  [final] is a boolean indicating
-        whether this is the last message of a reply.
-
-        Returns None if the end of stream is reached.
+        Returns a list of [code, message] tuples.  Codes and messages
+        are represented as bytearrays.
 
         Documentation: https://bird.network.cz/?get_doc&v=16&f=prog-2.html#ss2.9
         List of codes: https://github.com/sileht/bird-lg/blob/master/bird.py
         """
-        final = False
-        self.recv_atleast(5)
-        if len(self.buf) < 5:
-            del self.buf
-            return
-        # Read code
-        code = bytes(self.buf[:4])
-        if self.buf[4] == 32: # code + space means "last message"
-            final = True
-        # Read message
-        pos = self.recv_until(b'\n')
-        if pos == None:
-            raise Exception
-        msg = self.buf[5:pos]
-        del self.buf[:pos+1]
-        # If this was the final message of a reply, we cannot have any
-        # continuation string.
-        if final:
-            return (code, msg, final)
-        # Read possible continuation string
-        self.recv_atleast(1)
-        while len(self.buf) > 0 and self.buf[0] == 32: # Space
-            # Continuation line
-            pos = self.recv_until(b'\n')
-            if pos == None:
-                raise Exception
-            line = self.buf[1:pos]
-            msg += b"\n" + line
-            del self.buf[:pos+1]
-            self.recv_atleast(1)
-        # Return message
-        return (code, msg, final)
-
-    def parse_reply(self):
-        """Parse a complete reply from Bird output on the Unix socket.  A reply
-        may consist of several messages, each with a code, until a final
-        message.
-
-        Returns a list of [code, message] tuples.  Codes and messages
-        are represented as bytearrays.
-        """
-        final = False
         msgs = []
+        final = False
         while not final:
-            (code, msg, final) = self.parse_message()
-            msgs += (code, msg)
+            self.recv_atleast(5)
+            if len(self.buf) < 5:
+                final = True
+                break
+            if self.buf[0] == 32: # Space
+                # Continuation line
+                pos = self.recv_until(b'\n')
+                line = self.buf[1:pos]
+                msgs[-1][1] += b'\n' + line
+            else:
+                # New code
+                code = bytes(self.buf[:4])
+                if self.buf[4] == 32: # Space
+                    final = True
+                pos = self.recv_until(b'\n')
+                line = self.buf[5:pos]
+                msgs.append([code, line])
+            del self.buf[:pos+1]
         return msgs
 
     def send_message(self, msg):

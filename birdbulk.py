@@ -14,7 +14,7 @@ def benchmark(cli, n=1000):
 
 if __name__ == '__main__':
     cli = BirdCLI()
-    (code, banner, _) = cli.parse_message()
+    (code, banner) = cli.parse_reply()[0]
     print("Connected to daemon:", banner.decode())
     if len(sys.argv) > 1:
         iterations = int(sys.argv[1])
