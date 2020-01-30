@@ -37,21 +37,22 @@ class BirdCLI(object):
             self.buf += data
         return total_read
 
-    def recv_until(self, char):
-        """Read data on the socket until a specified bytestring [char] is encountered.
+    def recv_until(self, bytestring):
+        """Read data on the socket until a specified sequence [bytestring] is encountered.
 
         Returns the position of the bytestring if found, or None if the
         end of stream was reached before encountering the bytestring.
         """
-        if isinstance(char, str):
-            char = char.encode()
-        pos = self.buf.find(char)
+        # Accept strings, but convert them to bytestring using default encoding
+        if isinstance(bytestring, str):
+            bytestring = bytestring.encode()
+        pos = self.buf.find(bytestring)
         while pos == -1:
             data = self.sock.recv(self.chunk_size)
             if data == b"":
                 return
             self.buf += data
-            pos = self.buf.find(char)
+            pos = self.buf.find(bytestring)
         return pos
 
     def parse_reply(self):
