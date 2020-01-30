@@ -43,9 +43,6 @@ class BirdCLI(object):
         Returns the position of the bytestring if found, or None if the
         end of stream was reached before encountering the bytestring.
         """
-        # Accept strings, but convert them to bytestring using default encoding
-        if isinstance(bytestring, str):
-            bytestring = bytestring.encode()
         pos = self.buf.find(bytestring)
         while pos == -1:
             data = self.sock.recv(self.chunk_size)
