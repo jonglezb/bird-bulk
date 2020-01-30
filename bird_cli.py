@@ -52,6 +52,13 @@ class BirdCLI(object):
             pos = self.buf.find(bytestring)
         return pos
 
+    def _reconnect(self):
+        """Reset input buffer and reconnect to Bird socket"""
+        self.buf.clear()
+        self.sock.close()
+        self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.sock.connect(self.socket_path)
+
     def parse_reply(self):
         """Parse a complete reply from the Bird CLI.  A reply may consist of
         several messages, each with an associated code, until a final message.
@@ -59,33 +66,43 @@ class BirdCLI(object):
         Returns a list of [code, message] tuples.  Codes and messages
         are represented as bytearrays.
 
+        In case of error when communicating with Bird, we empty the
+        buffer, reconnect to Bird, and return an empty list.  The calling
+        code must decide whether to retry sending a message or not.
+
         Documentation: https://bird.network.cz/?get_doc&v=16&f=prog-2.html#ss2.9
         List of codes: https://github.com/sileht/bird-lg/blob/master/bird.py
+
         """
         msgs = []
         final = False
-        while not final:
-            self._recv_atleast(5)
-            if len(self.buf) < 5:
-                final = True
-                break
-            if self.buf[0] == 32: # Space
-                # Continuation line
-                pos = self._recv_until(b'\n')
-                line = self.buf[1:pos]
-                msgs[-1][1] += b'\n' + line
-            else:
-                # New code
-                code = bytes(self.buf[:4])
-                if self.buf[4] == 32: # Space
+        try:
+            while not final:
+                self._recv_atleast(5)
+                if len(self.buf) < 5:
                     final = True
-                pos = self._recv_until(b'\n')
-                line = self.buf[5:pos]
-                msgs.append([code, line])
-            del self.buf[:pos+1]
+                    break
+                if self.buf[0] == 32: # Space
+                    # Continuation line
+                    pos = self._recv_until(b'\n')
+                    line = self.buf[1:pos]
+                    msgs[-1][1] += b'\n' + line
+                else:
+                    # New code
+                    code = bytes(self.buf[:4])
+                    if self.buf[4] == 32: # Space
+                        final = True
+                    pos = self._recv_until(b'\n')
+                    line = self.buf[5:pos]
+                    msgs.append([code, line])
+                del self.buf[:pos+1]
+        except ConnectionResetError:
+            self._reconnect()
+            return []
         return msgs
 
     def send_message(self, msg):
+        """Send a message to the Bird CLI."""
         if isinstance(msg, str):
             msg = msg.encode()
         if not msg.endswith(b"\n"):
