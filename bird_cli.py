@@ -14,7 +14,7 @@ class BirdCLI(object):
         self.sock.connect(self.socket_path)
         self.buf = bytearray()
 
-    def recv_atleast(self, nb_bytes):
+    def _recv_atleast(self, nb_bytes):
         """Read data from the socket into the buffer until at least the given
         number of bytes is available in the buffer, or the end of stream
         is reached.  Existing data in the buffer is taken into account, so
@@ -37,7 +37,7 @@ class BirdCLI(object):
             self.buf += data
         return total_read
 
-    def recv_until(self, bytestring):
+    def _recv_until(self, bytestring):
         """Read data on the socket until a specified sequence [bytestring] is encountered.
 
         Returns the position of the bytestring if found, or None if the
@@ -68,13 +68,13 @@ class BirdCLI(object):
         msgs = []
         final = False
         while not final:
-            self.recv_atleast(5)
+            self._recv_atleast(5)
             if len(self.buf) < 5:
                 final = True
                 break
             if self.buf[0] == 32: # Space
                 # Continuation line
-                pos = self.recv_until(b'\n')
+                pos = self._recv_until(b'\n')
                 line = self.buf[1:pos]
                 msgs[-1][1] += b'\n' + line
             else:
@@ -82,7 +82,7 @@ class BirdCLI(object):
                 code = bytes(self.buf[:4])
                 if self.buf[4] == 32: # Space
                     final = True
-                pos = self.recv_until(b'\n')
+                pos = self._recv_until(b'\n')
                 line = self.buf[5:pos]
                 msgs.append([code, line])
             del self.buf[:pos+1]
