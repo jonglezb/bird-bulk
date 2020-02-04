@@ -58,6 +58,7 @@ class BirdCLI(object):
         self.sock.close()
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.sock.connect(self.socket_path)
+        self.parse_reply()[0]
 
     def parse_reply(self):
         """Parse a complete reply from the Bird CLI.  A reply may consist of
