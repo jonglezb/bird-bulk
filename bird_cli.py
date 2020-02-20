@@ -103,9 +103,16 @@ class BirdCLI(object):
         return msgs
 
     def send_message(self, msg):
-        """Send a message to the Bird CLI."""
+        """Send a message to the Bird CLI.  Returns True if the message was delivered.
+            If an error occurred, returns False.  The caller can either stop or try re-sending
+            the message."""
         if isinstance(msg, str):
             msg = msg.encode()
         if not msg.endswith(b"\n"):
             msg += b"\n"
-        self.sock.send(msg)
+        try:
+            self.sock.send(msg)
+            return True
+        except BrokenPipeError:
+            self._reconnect()
+            return False
