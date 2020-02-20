@@ -110,8 +110,15 @@ class BirdCLI(object):
             msg = msg.encode()
         if not msg.endswith(b"\n"):
             msg += b"\n"
+        total_sent = 0
+        total_length = len(msg)
         try:
-            self.sock.send(msg)
+            # send(2) can deliver less data than requested. In that case, loop again.
+            # Since the socket is in blocking mode, subsequent calls will block until
+            # the socket has space for the remaining part(s) of the message.
+            while total_sent < total_length:
+                sent = self.sock.send(msg[total_sent:])
+                total_sent += sent
             return True
         except BrokenPipeError:
             self._reconnect()
