@@ -1,5 +1,6 @@
 
 import socket
+import sys
 
 SOCKET_PATH = "/var/run/bird/bird.ctl"
 CHUNK_SIZE = 4096
@@ -98,6 +99,7 @@ class BirdCLI(object):
                     msgs.append([code, line])
                 del self.buf[:pos+1]
         except ConnectionResetError:
+            print("Warning: received ConnectionResetError. Reconnecting...", file=sys.stderr)
             self._reconnect()
             return []
         return msgs
@@ -121,5 +123,6 @@ class BirdCLI(object):
                 total_sent += sent
             return True
         except BrokenPipeError:
+            print("Warning: received BrokenPipeError. Reconnecting...", file=sys.stderr)
             self._reconnect()
             return False
