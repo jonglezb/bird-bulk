@@ -20,7 +20,14 @@ def benchmark(cli, stdin):
         reply = []
         
         while not reply:
-            cli.send_message("show route for " + i + " all")
+            
+            #if BrokenPipeError exception, reconnect and sleep
+            snd_msg = False
+            while not snd_msg:
+                snd_msg = cli.send_message("show route for " + i + " all")
+                if not snd_msg:
+                    time.sleep(0.01)
+
             reply = cli.parse_reply()
             
             #if could not connect to Bird, reconnect and sleep
